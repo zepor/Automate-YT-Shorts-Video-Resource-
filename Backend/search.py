@@ -1,19 +1,21 @@
-import requests
 from typing import List
+
+import requests
 from termcolor import colored
 
-def search_for_stock_videos(tags: list, api_key: str) -> List[str]:
+
+def search_for_stock_videos(tags: list, api_key_value: str) -> List[str]:
     """
     Searches for stock videos based on a query.
 
     """
-    
+
     # Build headers
     headers = {
-        "Authorization": api_key
+        "Authorization": api_key_value
     }
 
-    links = []
+    video_links = []
 
     for tag in tags:
 
@@ -21,7 +23,7 @@ def search_for_stock_videos(tags: list, api_key: str) -> List[str]:
         url = f"https://api.pexels.com/videos/search?query={tag}&per_page=1"
 
         # Send the request
-        r = requests.get(url, headers=headers)
+        r = requests.get(url, headers=headers, timeout=10)
 
         # Parse the response
         response = r.json()
@@ -32,7 +34,7 @@ def search_for_stock_videos(tags: list, api_key: str) -> List[str]:
         try:
             video_urls = response["videos"][0]["video_files"]
             # print(video_urls)
-        except:
+        except KeyError:
             print(colored("[-] No Videos found.", "red"))
             print(colored(response, "red"))
 
@@ -42,20 +44,30 @@ def search_for_stock_videos(tags: list, api_key: str) -> List[str]:
             if ".com/external" in video["link"]:
                 # Set video url
                 video_url = video["link"]
-                # print(f"{video_url} | {video['quality']} | {video['width']}/{video['height']}")
+                # print(
+                #     f"{video_url} | {video['quality']} | "
+                #     f"{video['width']}/{video['height']}"
+                # )
 
         # Let user know
-        print(colored(f"\t=> {video_url}", "cyan"))
+        if video_url:
+            print(colored(f"\t=> {video_url}", "cyan"))
+            video_links.append(video_url)
+        else:
+            print(
+                colored(f"\t=> No valid video found for tag: {tag}", "yellow")
+            )
 
-        # Return the video url
-        links.append(video_url)
+    return video_links
 
-    return links
 
 if __name__ == "__main__":
-
-    tags = ["how to make money online videos", "online money-making tutorials", "earning money online videos", "making money online tips", "online income strategies", "ways to make money online videos", "online money-making techniques", "earning money from home videos", "online business ideas for making money", "passive income online videos"]
-
-    links = search_for_stock_videos(tags)
-    print(links)
-
+    pass  # Add meaningful code here if needed
+    # Remove or comment out the following block:
+    # search_tags = [
+    #     "how to make money online videos",
+    #     ...
+    # ]
+    # api_key = "your_api_key_here"
+    # links = search_for_stock_videos(search_tags, api_key)
+    # print(links)

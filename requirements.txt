@@ -8,3 +8,12 @@ playsound
 srt_equalizer
 assemblyai
 Pillow==9.5.0
+vodbot
+moviepy
+streamlink
+yt-dlp
+openai-whisper
+opencv-python
+pandas
+numpy
+requests

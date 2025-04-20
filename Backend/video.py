@@ -1,50 +1,154 @@
 import os
-import requests
-import srt_equalizer
-import assemblyai as aai
-
 from typing import List
-from moviepy.editor import *
+
+import assemblyai as aai  # type: ignore
+# Ensure the requests library is installed and properly imported
+import requests
+import srt_equalizer  # type: ignore
+from moviepy.editor import (  # type: ignore
+    AudioFileClip,
+    CompositeVideoClip,
+    TextClip,
+    VideoFileClip,
+    concatenate_videoclips,
+)
+from moviepy.video.fx.crop import crop  # type: ignore
+from moviepy.video.tools.subtitles import SubtitlesClip  # type: ignore
 from termcolor import colored
-from moviepy.video.fx.all import crop
-from moviepy.video.tools.subtitles import SubtitlesClip
+import yt_dlp  # type: ignore
+
+TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
+TWITCH_ACCESS_TOKEN = os.getenv("TWITCH_ACCESS_TOKEN")
+TWITCH_CHANNEL_ID = "zepor1"
 
 
-def save_video(video_urls: list, directory: str = "./temp") -> str:
+def fetch_twitch_videos(
+    client_id: str, access_token: str, channel_id: str
+) -> List[str]:
     """
-    Saves a video from a given URL and returns the path to the video.
+    Fetches all video URLs from a Twitch channel.
 
     Args:
-        video_url (str): The URL of the video to save.
+        client_id (str): Twitch client ID.
+        access_token (str): Twitch access token.
+        channel_id (str): Twitch channel ID.
 
     Returns:
-        str: The path to the saved video.
+        List[str]: List of video URLs.
     """
-    os.makedirs(directory, exist_ok=True)  # Create the directory if it doesn't exist
-    video_paths = []
-    for video_id, video_url in enumerate(video_urls):
-        video_path = f"{directory}/{video_id+1}.mp4"
-        with open(video_path, "wb") as f:
-            f.write(requests.get(video_url).content)
+    headers = {
+        "Client-ID": client_id,
+        "Authorization": f"Bearer {access_token}"
+    }
+    url = (
+        f"https://api.twitch.tv/helix/videos?"
+        f"user_id={channel_id}&sort=time&type=all"
+    )
+    response = requests.get(url, headers=headers, timeout=10)
 
-        print(video_path)
-        video_paths.append(video_path)
-    
-    return video_paths
+    if response.status_code != 200:
+        print(
+            colored(f"Failed to fetch videos: {response.status_code}", "red"))
+        return []  # Return an empty list in case of failure
 
-def text_to_speech(text, output_path_location="output.mp3"):  # Define a function to speak text using edge-tts
+    data = response.json()
+    return [video["url"] for video in data.get("data", [])]
 
-    voice = "en-CA-LiamNeural"  # Choose the voice for the speech (professional Canadian accent)
+
+def fetch_twitch_video_titles(
+    client_id: str, access_token: str, channel_id: str
+) -> List[str]:
+    """
+    Fetches all video titles from a Twitch channel.
+
+    Args:
+        client_id (str): Twitch client ID.
+        access_token (str): Twitch access token.
+        channel_id (str): Twitch channel ID.
+
+    Returns:
+        List[str]: List of video titles.
+    """
+    headers = {
+        "Client-ID": client_id,
+        "Authorization": f"Bearer {access_token}"
+    }
+    url = (
+        f"https://api.twitch.tv/helix/videos?"
+        f"user_id={channel_id}&sort=time&type=all"
+    )
+    response = requests.get(url, headers=headers, timeout=10)
+
+    if response.status_code != 200:
+        print(
+            colored(
+                f"Failed to fetch video titles: {response.status_code}", "red"
+            )
+        )
+        return []  # Ensure a list is returned even in error cases
+
+    data = response.json()
+    return [video["title"] for video in data.get("data", [])]
+
+
+def save_video(urls):
+    saved_paths = []
+    for idx, url in enumerate(urls, 1):
+        # Fetch video info using yt_dlp to get title and upload date
+        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+            try:
+                info = ydl.extract_info(url, download=False)
+                # Use upload_date and title for filename
+                if info:
+                    upload_date = info.get('upload_date', 'unknown_date')
+                    title = info.get('title', f'video_{idx}')
+                else:
+                    upload_date = 'unknown_date'
+                    title = f'video_{idx}'
+                # Clean title for filesystem
+                safe_title = "".join(
+                    c for c in title if c.isalnum() or c in (' ', '_', '-')
+                ).rstrip()
+                filename = f"{upload_date}_{safe_title}.mp4"
+            except yt_dlp.utils.DownloadError as e:
+                print(colored(f"Failed to get info for {url}: {e}", "red"))
+                filename = f"video_{idx}.mp4"
+
+        output_path = f'./temp/{filename}'
+        ydl_opts = {
+            'outtmpl': output_path,
+            'format': 'best',
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            print(f"Downloading video: {url}")
+            ydl.download([url])
+        print(f"Saved video to: {output_path}")
+        saved_paths.append(output_path)
+    return saved_paths
+
+
+# Define a function to speak text using edge-tts
+def text_to_speech(text, output_path_location="output.mp3"):
+
+    # Choose the voice for the speech (professional Canadian accent)
+    voice = "en-CA-LiamNeural"
 
     # Choose the voice you want for the speech
-    # Here are some Available options with nice indian accent & are good for conversation:
-    # - en-US-JennyNeural: A clear and professional-sounding American female voice
+    # Here are some Available options with nice Indian accent & are good for
+    # conversation:
+    # - en-US-JennyNeural: A clear and professional-sounding American female
+    #   voice
     # - en-SG-LunaNeural: A friendly and approachable Singaporean female voice
     # - en-AU-NatashaNeural: A warm and friendly Australian female voice
     # - en-CA-ClaraNeural: A crisp and articulate Canadian female voice
 
-    # Build the edge-tts command string, including voice, text, and output media
-    command = f"edge-tts --voice \"{voice}\" --text \"{text}\" --write-media \"{output_path_location}\""
+    # Build the edge-tts command string, including voice, text,
+    # and output media
+    command = (
+        f"edge-tts --voice \"{voice}\" "
+        f"--text \"{text}\" "
+        f"--write-media \"{output_path_location}\""
+    )
     # print(command)
 
     # Execute the edge-tts command using the system shell
@@ -52,19 +156,26 @@ def text_to_speech(text, output_path_location="output.mp3"):  # Define a functio
 
     return output_path_location
 
-def generate_subtitles(audio_path: str, ASSEMBLY_AI_API_KEY: str, directory: str =  "./subtitles") -> str:
+
+def generate_subtitles(
+    audio_path: str,
+    ASSEMBLY_AI_API_KEY: str,
+    directory: str = "./subtitles"
+) -> str:
     """
-    Generates subtitles from a given audio file and returns the path to the subtitles.
+    Generates subtitles from a given audio file and
+    returns the path to the subtitles.
 
     Args:
-        audio_path (str): The path to the audio file to generate subtitles from.
+        audio_path (str): The path to the audio file to generate subtitles
+            from.
 
     Returns:
         str: The path to the generated subtitles.
     """
     def equalize_subtitles(srt_path: str, max_chars: int = 10) -> None:
-      # Equalize subtitles
-      srt_equalizer.equalize_srt_file(srt_path, srt_path, max_chars)
+        # Equalize subtitles
+        srt_equalizer.equalize_srt_file(srt_path, srt_path, max_chars)
 
     print(ASSEMBLY_AI_API_KEY)
 
@@ -74,14 +185,13 @@ def generate_subtitles(audio_path: str, ASSEMBLY_AI_API_KEY: str, directory: str
 
     transcript = transcriber.transcribe(audio_path)
 
-
-    os.makedirs(directory, exist_ok=True) 
+    os.makedirs(directory, exist_ok=True)
     # Save subtitles
     subtitles_path = f"{directory}/audio.srt"
 
     subtitles = transcript.export_subtitles_srt()
 
-    with open(subtitles_path, "w") as f:
+    with open(subtitles_path, "w", encoding="utf-8") as f:
         f.write(subtitles)
 
     # Equalize subtitles
@@ -92,10 +202,10 @@ def generate_subtitles(audio_path: str, ASSEMBLY_AI_API_KEY: str, directory: str
     return subtitles_path
 
 
-
 def combine_videos(video_paths: List[str], max_duration: int) -> str:
     """
-    Combines a list of videos into one video and returns the path to the combined video.
+    Combines a list of videos into one video and
+    returns the path to the combined video.
 
     Args:
         video_paths (list): A list of paths to the videos to combine.
@@ -104,23 +214,29 @@ def combine_videos(video_paths: List[str], max_duration: int) -> str:
     Returns:
         str: The path to the combined video.
     """
-    combined_video_path = f"./temp/combined_video.mp4"
+    combined_video_path = "./temp/combined_video.mp4"
 
     print(colored("[+] Combining videos...", "blue"))
-    print(colored(f"[+] Each video will be {max_duration / len(video_paths)} seconds long.", "blue"))
+    print(
+        colored(
+            f"[+] Each video will be "
+            f"{max_duration / len(video_paths)} seconds long.",
+            "blue"
+        )
+    )
 
     clips = []
     for video_path in video_paths:
         clip = VideoFileClip(video_path)
-        clip = clip.without_audio()       
+        clip = clip.without_audio()
         clip = clip.subclip(0, max_duration / len(video_path))
         clip = clip.set_fps(30)
 
         # Not all videos are same size,
         # so we need to resize them
-        clip = crop(clip, width=1080, height=1920, \
-                    x_center=clip.w / 2, \
-                        y_center=clip.h / 2)
+        clip = crop(clip, width=1080, height=1920,
+                    x_center=clip.w / 2,
+                    y_center=clip.h / 2)
         clip = clip.resize((1080, 1920))
 
         clips.append(clip)
@@ -131,7 +247,13 @@ def combine_videos(video_paths: List[str], max_duration: int) -> str:
 
     return combined_video_path
 
-def generate_video(combined_video_path: str, tts_path: str, subtitles_path: str, output_file_name: str = "main_output.mp4") -> str:
+
+def generate_video(
+    combined_video_path: str,
+    tts_path: str,
+    subtitles_path: str,
+    output_file_name: str = "main_output.mp4"
+) -> str:
     """
     This function creates the final video, with subtitles and audio.
 
@@ -144,14 +266,19 @@ def generate_video(combined_video_path: str, tts_path: str, subtitles_path: str,
         str: The path to the final video.
     """
     # Make a generator that returns a TextClip when called with consecutive
-    generator = lambda txt: TextClip(txt, font=fr"MoneyPrinter\fonts\bold_font.ttf", fontsize=100, color="#FFFF00",
-    stroke_color="black", stroke_width=5)
+    def generator(txt):
+        return TextClip(
+            txt,
+            font=r"MoneyPrinter\fonts\bold_font.ttf",
+            fontsize=100,
+            color="#FFFF00",
+            stroke_color="black", stroke_width=5)
 
     # Burn the subtitles into the video
     subtitles = SubtitlesClip(subtitles_path, generator)
     result = CompositeVideoClip([
         VideoFileClip(combined_video_path),
-        subtitles.set_pos(("center", "center"))
+        subtitles.set_position(("center", "center"))
     ])
 
     # Add the audio
@@ -162,42 +289,106 @@ def generate_video(combined_video_path: str, tts_path: str, subtitles_path: str,
 
     return output_file_name
 
+
 def list_files_in_directory(directory):
     try:
         # Get a list of all files in the specified directory
-        files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+        files = [f for f in os.listdir(directory) if os.path.isfile(
+            os.path.join(directory, f))]
         return files
-    
+
     except FileNotFoundError:
         print(f"Directory not found: {directory}")
         return []
 
 
-
 if __name__ == "__main__":
 
-    # path = text_to_speech('''Discover diverse online income avenues with this guide! Freelancing offers a platform for writers, designers, programmers, and marketers to showcase skills and secure clients. Dive into lucrative affiliate marketing by promoting products for commissions. Consider starting an e-commerce business to tap into the global market. Content creation, whether through blogging, vlogging, or online courses, monetizes expertise. Emphasizing diversification, explore multiple income streams for financial stability. Making money online demands dedication, perseverance, and learning. It's not a quick fix, but with the right mindset, you can build a sustainable online income. For more insights or questions, leave a comment below. Happy money-making''')
+    # path = text_to_speech(
+    # '''Discover diverse online income avenues with this
+    # guide! Freelancing offers a platform for writers, designers, programmers,
+    # and marketers to showcase skills and secure clients. Dive into lucrative
+    # affiliate marketing by promoting products for commissions. Consider
+    # starting an e-commerce business to tap into the global market. Content
+    # creation, whether through blogging, vlogging, or online courses,
+    # monetizes expertise. Emphasizing diversification, explore multiple
+    # income streams for financial stability. Making money online demands
+    # dedication, perseverance, and learning. It's not a quick fix, but with
+    # the right mindset, you can build a sustainable online income. For more
+    # insights or questions, leave a comment below. Happy money-making''')
     # print(path)
-
-    links = ['https://player.vimeo.com/external/493894149.sd.mp4?s=c882caa9e51f67e259185992e97340c902c65624&profile_id=164&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/504027534.hd.mp4?s=3dcefc44fde76f92996332f9aff164453815ee99&profile_id=174&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/507877197.hd.mp4?s=e6047c0fde051a074dc4cf1a9c99ec1a6c9080e1&profile_id=170&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/533386598.hd.mp4?s=f37c8671c211b59b0aa6b24108ce752b18081aa8&profile_id=174&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/539033394.sd.mp4?s=8813ecbaf896b6ea024b4fff6eab1246e81758ac&profile_id=164&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/493894149.sd.mp4?s=c882caa9e51f67e259185992e97340c902c65624&profile_id=164&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/441945918.hd.mp4?s=39454433911b7835677a3925b93b0593ee3bf3ad&profile_id=175&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/507878934.hd.mp4?s=349c086fb23a938b6ca97bad042f044e04e0487d&profile_id=172&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/533386598.hd.mp4?s=f37c8671c211b59b0aa6b24108ce752b18081aa8&profile_id=174&oauth2_token_id=57447761', 
-            'https://player.vimeo.com/external/436375789.hd.mp4?s=ea9af22125a91895ef74ae54ba2ad033a686ccf1&profile_id=170&oauth2_token_id=57447761']
+    if TWITCH_CLIENT_ID and TWITCH_ACCESS_TOKEN:
+        video_urls = fetch_twitch_videos(
+            TWITCH_CLIENT_ID, TWITCH_ACCESS_TOKEN, TWITCH_CHANNEL_ID)
+    else:
+        print(colored("Error: Missing Twitch credentials.", "red"))
+        video_urls = []
+    if video_urls:
+        save_video(video_urls)
+    # links = [
+    #     (
+    #         'https://player.vimeo.com/external/493894149.sd.mp4'
+    #         '?s=c882caa9e51f67e259185992e97340c902c65624'
+    #         '&profile_id=164&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/504027534.hd.mp4'
+    #         '?s=3dcefc44fde76f92996332f9aff164453815ee99'
+    #         '&profile_id=174&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/507877197.hd.mp4'
+    #         '?s=e6047c0fde051a074dc4cf1a9c99ec1a6c9080e1'
+    #         '&profile_id=170&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/533386598.hd.mp4'
+    #         '?s=f37c8671c211b59b0aa6b24108ce752b18081aa8'
+    #         '&profile_id=174&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/539033394.sd.mp4'
+    #         '?s=8813ecbaf896b6ea024b4fff6eab1246e81758ac'
+    #         '&profile_id=164&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/493894149.sd.mp4'
+    #         '?s=c882caa9e51f67e259185992e97340c902c65624'
+    #         '&profile_id=164&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/441945918.hd.mp4'
+    #         '?s=39454433911b7835677a3925b93b0593ee3bf3ad'
+    #         '&profile_id=175&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/507878934.hd.mp4'
+    #         '?s=349c086fb23a938b6ca97bad042f044e04e0487d'
+    #         '&profile_id=172&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/533386598.hd.mp4'
+    #         '?s=f37c8671c211b59b0aa6b24108ce752b18081aa8'
+    #         '&profile_id=174&oauth2_token_id=57447761'
+    #     ),
+    #     (
+    #         'https://player.vimeo.com/external/436375789.hd.mp4'
+    #         '?s=ea9af22125a91895ef74ae54ba2ad033a686ccf1'
+    #         '&profile_id=170&oauth2_token_id=57447761'
+    #     )
+    # ]
 
     # temp_audio = AudioFileClip("output.mp3")
     # print(temp_audio.duration)
 
     # video_paths = save_video(links)
     # print(video_paths)
-    
+
     # speech_file_path = text_to_speech("TOPIC")
-    # subtitle_path = generate_subtitles(r"output.mp3", 'fd937dda8dbf4258b7ec098b7c419bfe')
+    # subtitle_path = generate_subtitles(
+    #     r"output.mp3"
+    #     'fd937dda8dbf4258b7ec098b7c419bfe'
+    # )
 
     # combined_video_path = combine_videos(video_paths, temp_audio.duration)
     # combined_video_path = f"./temp/combined_video.mp4"

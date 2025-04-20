@@ -1,9 +1,9 @@
 import re
-import g4f
 import json
-
 from typing import List
+import g4f  # type: ignore
 from termcolor import colored
+
 
 def generate_script(video_subject: str) -> str:
     """
@@ -28,7 +28,8 @@ def generate_script(video_subject: str) -> str:
 
     Do not under any circumstance refernce this prompt in your response.
 
-    Get straight to the point, don't start with unnecessary things like, "welcome to this video".
+    Get straight to the point, don't start with unnecessary things like,
+    "welcome to this video".
 
     Obviously, the script should be related to the subject of the video.
 
@@ -37,7 +38,7 @@ def generate_script(video_subject: str) -> str:
 
     # Generate script
     response = g4f.ChatCompletion.create(
-        model=g4f.models.gpt_4_32k_0613,
+        model=g4f.models.gpt_4o_mini,  # Replace with the correct model name
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -45,12 +46,35 @@ def generate_script(video_subject: str) -> str:
 
     # Return the generated script
     if response:
-        return response + " "
+        if (
+            isinstance(response, dict) and
+            isinstance(response.get('choices'), list) and
+            len(response.get('choices', [])) > 0
+        ):
+            choice = dict(response)['choices'][0]
+            if (
+                isinstance(choice, dict) and
+                isinstance(choice.get('message'), dict) and
+                'content' in choice.get('message', {})
+            ):
+                return str(choice.get('message', {}).get('content', '')) + " "
+            print(colored(
+                "[-] GPT returned an unexpected response format.", "red"
+            ))
+            return str(response) + " "
+        else:
+            print(colored(
+                "[-] GPT returned an unexpected response format.", "red"
+            ))
+            return str(response) + " "
     else:
         print(colored("[-] GPT returned an empty response.", "red"))
-        return None
+        return ""
 
-def get_search_terms(video_subject: str, amount: int, script: str) -> List[str]:
+
+def get_search_terms(
+    video_subject: str, amount: int, video_script: str
+) -> List[str]:
     """
     Generate a JSON-Array of search terms for stock videos,
     depending on the subject of a video.
@@ -63,7 +87,7 @@ def get_search_terms(video_subject: str, amount: int, script: str) -> List[str]:
     Returns:
         List[str]: The search terms for the video subject.
     """
-    
+
     # Build prompt
     prompt = f"""
     Generate {amount} search terms for stock videos,
@@ -73,7 +97,7 @@ def get_search_terms(video_subject: str, amount: int, script: str) -> List[str]:
     The search terms are to be returned as
     a JSON-Array of strings.
 
-    Each search term should consist of 1-3 words, 
+    Each search term should consist of 1-3 words,
     always add the main subject of the video.
 
     Here is an example of a JSON-Array of strings:
@@ -86,12 +110,12 @@ def get_search_terms(video_subject: str, amount: int, script: str) -> List[str]:
     DO NOT RETURN ANYTHING ELSE.
 
     For context, here is the full text:
-    {script}
+    {video_script}
     """
 
     # Generate search terms
     response = g4f.ChatCompletion.create(
-        model=g4f.models.gpt_35_turbo_16k_0613,
+        model=g4f.models.gpt_4o_mini,  # Ensure the model name is correct
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -99,27 +123,51 @@ def get_search_terms(video_subject: str, amount: int, script: str) -> List[str]:
 
     # Load response into JSON-Array
     try:
-        search_terms = json.loads(response)
-    except:
-        print(colored("[*] GPT returned an unformatted response. Attempting to clean...", "yellow"))
+        search_terms = json.loads(str(response))
+    except json.JSONDecodeError:
+        print(colored(
+            "[*] GPT returned an unformatted response. Attempting to clean...",
+            "yellow"
+        ))
 
         # Use Regex to extract the array from the markdown
-        search_terms = re.findall(r'\[.*\]', response)
+        search_terms = re.findall(r'\[.*\]', str(response))
 
         if not search_terms:
             print(colored("[-] Could not parse response.", "red"))
+            return []
 
         # Load the array into a JSON-Array
-        search_terms = json.loads(search_terms)
+        search_terms = json.loads(search_terms[0])
 
     # Let user know
-    print(colored(f"\nGenerated {amount} search terms: {', '.join(search_terms)}", "cyan"))
+    generated_terms = ', '.join(search_terms)
+    print(colored(
+        f"\nGenerated {amount} search terms: {generated_terms}",
+        "cyan"
+    ))
 
     # Return search terms
     return search_terms
 
 
-script = "To make money online, it's important to focus on a few key strategies. First, consider creating and selling digital products or services, such as ebooks, online courses, or software. Another option is to monetize a website or blog through affiliate marketing, advertising, or sponsored content. Additionally, freelancing or offering your skills and expertise through online platforms can be a lucrative way to earn money. Lastly, consider participating in online surveys, freelancing, or investing in stocks and cryptocurrencies. By diversifying your income streams and staying persistent, you can successfully make money online."
+script = (
+    "To make money online, it's important to focus on a few key strategies. "
+    "First, consider creating and selling digital products or services, "
+    "such as "
+    "ebooks, online courses, or software. Another option is to monetize a "
+    "website "
+    "or blog through affiliate marketing, advertising, or sponsored content. "
+    "Additionally, freelancing or offering your skills and expertise "
+    "through online "
+    "platforms can be a lucrative way to earn money. Lastly, consider "
+    "participating "
+    "in online surveys, freelancing, or investing in stocks and "
+    "cryptocurrencies. "
+    "By diversifying your income streams and staying persistent, "
+    "you can successfully "
+    "make money online."
+)
 
 if __name__ == "__main__":
     script = generate_script("how to make money online")

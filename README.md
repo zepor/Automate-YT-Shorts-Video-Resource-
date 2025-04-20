@@ -1,4 +1,5 @@
 # Make Sure You Subscribe To our Channel 😊😊
+
 [Devs Do Code](https://www.youtube.com/channel/@devsdocode)
 
 🚀 Dive into the world of coding with [Devs Do Code](https://www.youtube.com/channel/@devsdocode) - where passion meets programming! Make sure to hit that Subscribe button to stay tuned for exciting content! 😊✨
@@ -28,7 +29,9 @@ python main.py
      # OR
 python main.ipynb
 ```
+
 If any error occurs for FFMPEG then follow these steps
+
 ```powershell admin
 # Install Chocolatey
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
