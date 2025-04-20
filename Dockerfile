@@ -1,0 +1,30 @@
+FROM python:3.11-slim
+
+# Install required packages with security and size optimizations
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    curl \
+    ffmpeg \
+    git \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user
+RUN useradd -m twitchuser
+USER twitchuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy project files
+COPY --chown=twitchuser:twitchuser . .
+
+# Install Python dependencies
+RUN python -m pip install --upgrade pip && \
+    python -m pip install -r requirements.txt
+
+# Healthcheck to ensure container stays healthy
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD python -c "import os; assert os.path.exists('evaluation.py')"
+
+EXPOSE 8000
+
+# Default command
+CMD ["python", "evaluation.py"]

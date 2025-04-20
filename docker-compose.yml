@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  twitch-shorts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: twitch-shorts
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app:cached
+      - ./temp:/app/temp:cached  # Use cached option for better performance
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; assert os.path.exists('evaluation.py')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    user: twitchuser

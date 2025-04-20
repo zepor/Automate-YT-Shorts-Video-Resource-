@@ -1,0 +1,25 @@
+# Ignore Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore VS Code settings
+.vscode/
+
+# Ignore environment settings
+.env
+.envrc
+
+# Ignore local logs and temp
+*.log
+temp/
+fonts/
+har_and_cookies/
+*.part
+*.ytmdl
+*.mp4
+*.mp3
+
+# Ignore Docker build artifacts
+docker-compose.override.yml
+Dockerfile~
