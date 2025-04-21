@@ -1,27 +1,19 @@
 {
-    "folders": [
-        {
-            "path": "."
-        },
-        {
-            "path": "C:\\Users\\johnb\\Repos\\Automate-YT-Shorts-Video-Resource-"
-        }
-    ],
-    "settings": {
-        "python.pythonPath": "C:\\Users\\johnb\\Repos\\Automate-YT-Shorts-Video-Resource-\\.venv\\Scripts\\python.exe",
-        "python.autoComplete.extraPaths": [
-            "C:\\Users\\johnb\\Repos\\Automate-YT-Shorts-Video-Resource-\\.venv\\Lib\\site-packages"
-        ],
-        "python.analysis.typeCheckingMode": "basic",
-        "python.analysis.diagnosticMode": "workspace",
-        "python.analysis.completeFunctionCalls": true,
-		"python.analysis.indexing": true,
-		"python.analysis.indexingInterval": 1000,
-        "python.analysis.autoImportCompletions": true,
-        "python-envs.pythonProjects": [],
-        "python.linting.enabled": true,
-        "python.linting.pylintEnabled": true,
-        "python.linting.flake8Enabled": true,
-        "python.linting.mypyEnabled": true
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "C:\\Users\\johnb\\Repos\\Automate-YT-Shorts-Video-Resource-"
     }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "C:\\Users\\johnb\\Repos\\Automate-YT-Shorts-Video-Resource-\\.venv\\Scripts\\python.exe",
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.diagnosticMode": "workspace",
+    "editor.formatOnSave": true,
+    "python.linting.enabled": true,
+    "python.linting.linter": "pylint",
+    "python-envs.pythonProjects": []
+  }
 }

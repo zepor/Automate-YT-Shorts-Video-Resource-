@@ -1,27 +1,33 @@
+"""
+Main script for automating the creation of YouTube Shorts videos.
+
+This script integrates various modules to fetch Twitch videos, generate
+scripts,
+search for stock videos, and produce final video outputs with subtitles and
+audio.
+"""
+
 import os
 import gpt
 import search
 import video
-import moviepy.config as mpy_config  # type: ignore
 from dotenv import load_dotenv
+from moviepy.config import change_settings
 
-mpy_config.FFMPEG_BINARY = "ffmpeg"
-mpy_config.IMAGEMAGICK_BINARY = "magick"
+# mpy_config.FFMPEG_BINARY = "ffmpeg"
+# mpy_config.IMAGEMAGICK_BINARY = "magick"
+
+load_dotenv(r"C:\Users\johnb\Repos\Automate-YT-Shorts-Video-Resource-\.env")
+change_settings({"IMAGEMAGICK_BINARY": os.getenv("IMAGEMAGICK_BINARY")})
 
 try:
     from moviepy.audio.io.AudioFileClip import AudioFileClip  # type: ignore
 except ImportError as exc:
     raise ImportError(
         "moviepy is required but missing type stubs. Ensure moviepy is "
-        "installed and consider using a type checker that supports dynamic "
-        "imports."
+        + "installed and consider using a type checker that supports dynamic "
+        + "imports."
     ) from exc
-
-# Removed unused and problematic import for change_setting
-
-load_dotenv(r"C:\Users\johnb\Repos\Automate-YT-Shorts-Video-Resource-\.env")
-
-os.environ["IMAGEMAGICK_BINARY"] = os.getenv("IMAGEMAGICK_BINARY", "")
 
 ASSEMBLY_AI_API_KEY = os.getenv("ASSEMBLY_AI_API_KEY")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
@@ -37,7 +43,7 @@ print("TWITCH_CHANNEL_ID:", TWITCH_CHANNEL_ID)
 if not TWITCH_CLIENT_ID or not TWITCH_ACCESS_TOKEN or not TWITCH_CHANNEL_ID:
     raise ValueError(
         "TWITCH_CLIENT_ID, TWITCH_ACCESS_TOKEN, and TWITCH_CHANNEL_ID must be "
-        "set in the environment variables."
+        + "set in the environment variables."
     )
 
 # Fetch videos from Twitch
@@ -50,13 +56,11 @@ video_paths = video.save_video(video_urls)
 
 if not video_paths:
     if not PEXELS_API_KEY:
-        raise ValueError(
-            "PEXELS_API_KEY must be set in the environment variables."
-        )
-    topic = "Default Topic for Stock Videos"
-    script = gpt.generate_script(topic)
-    tags = gpt.get_search_terms(topic, 10, script)
-    links = search.search_for_stock_videos(tags, api_key_value=PEXELS_API_KEY)
+        raise ValueError("PEXELS_API_KEY must be set in the environment variables.")
+    TOPIC = "Default Topic for Stock Videos"
+    SCRIPT = gpt.generate_script(TOPIC)
+    TAGS = gpt.get_search_terms(TOPIC, 10, SCRIPT)
+    links = search.search_for_stock_videos(TAGS, api_key_value=PEXELS_API_KEY)
     video_paths = video.save_video(links)
 # Fetch video titles from Twitch
 video_titles = video.fetch_twitch_video_titles(
@@ -64,38 +68,34 @@ video_titles = video.fetch_twitch_video_titles(
 )
 
 # Generate script and tags
-topic = "Twitch Streamer Zepor1 Marvel Rivals Highlights and Fails Compilation"
-script = gpt.generate_script(topic)
-tags = gpt.get_search_terms(topic, 10, script)
-script = gpt.generate_script(topic)
-tags = gpt.get_search_terms(topic, 10, script)
+TOPIC = "Twitch Streamer Zepor1 Marvel Rivals Highlights and Fails Compilation"
+SCRIPT = gpt.generate_script(TOPIC)
+TAGS = gpt.get_search_terms(TOPIC, 10, SCRIPT)
+SCRIPT = gpt.generate_script(TOPIC)
+TAGS = gpt.get_search_terms(TOPIC, 10, SCRIPT)
 
 # Search for stock videos (optional, if needed)
 if not PEXELS_API_KEY:
-    raise ValueError(
-        "PEXELS_API_KEY must be set in the environment variables."
-    )
-links = search.search_for_stock_videos(tags, api_key_value=PEXELS_API_KEY)
+    raise ValueError("PEXELS_API_KEY must be set in the environment variables.")
+links = search.search_for_stock_videos(TAGS, api_key_value=PEXELS_API_KEY)
 
 video_paths = video.save_video(links)
 
 # Generate dynamic topics and tags
 for title in video_titles:
     print(f"Processing video: {title}")
-    script = gpt.generate_script(title)
-    tags = gpt.get_search_terms(title, 10, script)
+    SCRIPT = gpt.generate_script(title)
+    tags = gpt.get_search_terms(title, 10, SCRIPT)
 
     # Generate speech and subtitles
-    speech_file_path = video.text_to_speech(script)
+    SPEECH_FILE_PATH = video.text_to_speech(SCRIPT)
     if not ASSEMBLY_AI_API_KEY:
         raise ValueError(
             "ASSEMBLY_AI_API_KEY must be set in the environment variables."
         )
 
-    subtitle_path = video.generate_subtitles(
-        speech_file_path, ASSEMBLY_AI_API_KEY
-    )
+    SUBTITLE_PATH = video.generate_subtitles(SPEECH_FILE_PATH, ASSEMBLY_AI_API_KEY)
 
-    audio_duration = AudioFileClip(speech_file_path).duration
-    combined_video_path = video.combine_videos(video_paths, audio_duration)
-    video.generate_video(combined_video_path, speech_file_path, subtitle_path)
+    audio_duration = AudioFileClip(SPEECH_FILE_PATH).duration
+    COMBINED_VIDEO_PATH = video.combine_videos(video_paths, audio_duration)
+    video.generate_video(COMBINED_VIDEO_PATH, SPEECH_FILE_PATH, SUBTITLE_PATH)

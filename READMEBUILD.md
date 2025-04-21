@@ -196,12 +196,14 @@ requirements.txt
 - Wait for user approval before generating code.
 - Be aware if the code generated is not working and actively bug fix with the user. The more proactive the agent is in fixing bugs, the more likely the user will be to trust the agent and continue with approvals.
 - After each step, update README Entry Template
-  ### Step: <Step Name>
+
+  ### Step: [Step Name]
+
   - **Status:** completed/pending/failed
   - **Files Modified:** file1.py, file2.py
   - **Rationale:** <Why this change was made, what it accomplishes>
-  - **Prompt Used:** <The exact prompt you used to generate the code>
-  - **Timestamp:** <ISO timestamp> (progress, decisions, prompt) and `progress.json`.
+  - **Prompt Used:** (The exact prompt you used to generate the code)
+  - **Timestamp:** ISO timestamp (progress, decisions, prompt) and `progress.json`.
 
 Example `progress.json`:
 
@@ -229,8 +231,9 @@ Example `progress.json`:
 
 ### Step 2: 🚨 Highlight Detection (Automated)
 
-# Step 2: Highlight Detection
-# This function analyzes chat and audio to detect highlights in Twitch VODs.
+## Step 2: Highlight Detection
+
+## This function analyzes chat and audio to detect highlights in Twitch VODs
 
 - [ ] Detect highlights from chat and audio spikes.
 - ✅ Success if highlights JSON created.

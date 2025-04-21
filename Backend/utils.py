@@ -1,11 +1,26 @@
+"""
+Utility module for documenting pipeline steps and managing project progress.
+"""
+
 import os
 import json
 from datetime import datetime
+import re
 
-def document_step(step_name, files_modified, rationale, prompt, status, code_comments=None):
+
+def document_step(
+    step_name,
+    files_modified,
+    rationale,
+    prompt,
+    status,
+    code_comments=None,
+    user_prompt=None,
+):
     """
-    Appends a detailed entry for a pipeline step to READMEBUILD.md and updates progress.json.
-    Optionally adds code comments to the top of each modified file.
+    Appends a detailed, foldable entry for a pipeline step to READMEBUILD.md
+    and updates progress.json. Optionally adds code comments to the top of
+    each modified file.
     """
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     readme_path = os.path.join(project_dir, "READMEBUILD.md")
@@ -13,39 +28,76 @@ def document_step(step_name, files_modified, rationale, prompt, status, code_com
 
     # Update progress.json
     if os.path.exists(progress_path):
-        with open(progress_path, "r", encoding="utf-8") as f:
-            progress = json.load(f)
+        with open(progress_path, "r", encoding="utf-8") as progress_file:
+            progress = json.load(progress_file)
     else:
         progress = {}
 
     progress[step_name] = {
         "status": status,
         "details": rationale,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "files_modified": files_modified,
+        "prompt": prompt,
+        "user_prompt": user_prompt,
     }
-    with open(progress_path, "w", encoding="utf-8") as f:
-        json.dump(progress, f, indent=2)
+    with open(progress_path, "w", encoding="utf-8") as progress_file:
+        json.dump(progress, progress_file, indent=2)
 
-    # Append to READMEBUILD.md
-    entry = f"""
-### Step: {step_name}
-- **Status:** {status}
-- **Files Modified:** {', '.join(files_modified)}
-- **Rationale:** {rationale}
-- **Prompt Used:** `{prompt}`
-- **Timestamp:** {datetime.now().isoformat()}
-"""
-    with open(readme_path, "a", encoding="utf-8") as f:
-        f.write(entry)
+    # Add foldable details to READMEBUILD.md
+    if os.path.exists(readme_path):
+        with open(readme_path, "r", encoding="utf-8") as readme_file:
+            readme = readme_file.read()
+    else:
+        readme = ""
+
+    details_pattern = re.compile(
+        rf"<!--STEP_{step_name}_START-->.*" rf"<!--STEP_{step_name}_END-->", re.DOTALL
+    )
+    readme = details_pattern.sub("", readme)
+    details = (
+        "\n<!--STEP_"
+        + str(step_name)
+        + "_START-->\n"
+        + "<details>\n<summary><b>"
+        + str(step_name)
+        + " ("
+        + str(status)
+        + ")</b></summary>\n\n"
+        + "- **Status:** "
+        + str(status)
+        + "\n"
+        + "- **Files Modified:** "
+        + ", ".join(files_modified)
+        + "\n"
+        + "- **Rationale:** "
+        + str(rationale)
+        + "\n"
+        + "- **Prompt Used:** `"
+        + str(prompt)
+        + "`\n"
+        + "- **User Prompt:** `"
+        + str(user_prompt or "")
+        + "`\n"
+        + "- **Timestamp:** "
+        + str(progress[step_name]["timestamp"])
+        + "\n"
+        + "</details>\n<!--STEP_"
+        + str(step_name)
+        + "_END-->\n"
+    )
+    readme = details + readme
+    with open(readme_path, "w", encoding="utf-8") as readme_file:
+        readme_file.write(readme)
 
     # Optionally add code comments to each file
     if code_comments:
         for file_path, comment in code_comments.items():
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    content = f.read()
+                with open(file_path, "r", encoding="utf-8") as file:
+                    content = file.read()
                 if not content.startswith(comment):
-                    with open(file_path, "w", encoding="utf-8") as f:
-                        f.write(comment + "\n" + content)
-            except Exception as e:
+                    with open(file_path, "w", encoding="utf-8") as file:
+                        file.write(comment + "\n" + content)
+            except (FileNotFoundError, PermissionError, IOError) as e:
                 print(f"Could not add comment to {file_path}: {e}")

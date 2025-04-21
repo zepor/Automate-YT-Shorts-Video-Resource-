@@ -1,16 +1,28 @@
-# Ignore Python bytecode
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.so
 
-# Ignore VS Code settings
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VS Code settings
 .vscode/
 
-# Ignore environment settings
+# Environment variables
 .env
-.envrc
+.env.*
 
-# Ignore local logs and temp
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temp
 *.log
 temp/
 fonts/
@@ -20,6 +32,6 @@ har_and_cookies/
 *.mp4
 *.mp3
 
-# Ignore Docker build artifacts
+# Docker build artifacts
 docker-compose.override.yml
 Dockerfile~

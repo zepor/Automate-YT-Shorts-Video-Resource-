@@ -1,7 +1,16 @@
+"""
+This module provides functionality for automating the creation of YouTube
+Shorts videos.
+It includes utilities for fetching Twitch videos, downloading and processing
+video files,
+generating subtitles, combining video clips, and adding text-to-speech audio.
+"""
+
 import os
 from typing import List
 
 import assemblyai as aai  # type: ignore
+
 # Ensure the requests library is installed and properly imported
 import requests
 import srt_equalizer  # type: ignore
@@ -38,7 +47,7 @@ def fetch_twitch_videos(
     """
     headers = {
         "Client-ID": client_id,
-        "Authorization": f"Bearer {access_token}"
+        "Authorization": f"Bearer {access_token}",
     }
     url = (
         f"https://api.twitch.tv/helix/videos?"
@@ -47,8 +56,7 @@ def fetch_twitch_videos(
     response = requests.get(url, headers=headers, timeout=10)
 
     if response.status_code != 200:
-        print(
-            colored(f"Failed to fetch videos: {response.status_code}", "red"))
+        print(colored(f"Failed to fetch videos: {response.status_code}", "red"))
         return []  # Return an empty list in case of failure
 
     data = response.json()
@@ -71,7 +79,7 @@ def fetch_twitch_video_titles(
     """
     headers = {
         "Client-ID": client_id,
-        "Authorization": f"Bearer {access_token}"
+        "Authorization": f"Bearer {access_token}",
     }
     url = (
         f"https://api.twitch.tv/helix/videos?"
@@ -80,76 +88,82 @@ def fetch_twitch_video_titles(
     response = requests.get(url, headers=headers, timeout=10)
 
     if response.status_code != 200:
-        print(
-            colored(
-                f"Failed to fetch video titles: {response.status_code}", "red"
-            )
-        )
+        print(colored(f"Failed to fetch video titles: {response.status_code}", "red"))
         return []  # Ensure a list is returned even in error cases
 
     data = response.json()
     return [video["title"] for video in data.get("data", [])]
 
 
-def save_video(urls):
+def save_video(urls: List[str]) -> List[str]:
+    """
+    Downloads videos from the provided URLs and saves them to the local
+    filesystem.
+
+    Args:
+        urls (List[str]): A list of video URLs to download.
+
+    Returns:
+        List[str]: A list of file paths where the videos are saved.
+    """
     saved_paths = []
     for idx, url in enumerate(urls, 1):
         # Fetch video info using yt_dlp to get title and upload date
-        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
             try:
                 info = ydl.extract_info(url, download=False)
                 # Use upload_date and title for filename
                 if info:
-                    upload_date = info.get('upload_date', 'unknown_date')
-                    title = info.get('title', f'video_{idx}')
+                    upload_date = info.get("upload_date", "unknown_date")
+                    title = info.get("title", f"video_{idx}")
                 else:
-                    upload_date = 'unknown_date'
-                    title = f'video_{idx}'
+                    upload_date = "unknown_date"
+                    title = f"video_{idx}"
                 # Clean title for filesystem
                 safe_title = "".join(
-                    c for c in title if c.isalnum() or c in (' ', '_', '-')
+                    c for c in title if c.isalnum() or c in (" ", "_", "-")
                 ).rstrip()
                 filename = f"{upload_date}_{safe_title}.mp4"
             except yt_dlp.utils.DownloadError as e:
                 print(colored(f"Failed to get info for {url}: {e}", "red"))
                 filename = f"video_{idx}.mp4"
 
-        output_path = f'./temp/{filename}'
+        output_path = f"./temp/{filename}"
         ydl_opts = {
-            'outtmpl': output_path,
-            'format': 'best',
+            "outtmpl": output_path,
+            "format": "best",
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            print(f"Downloading video: {url}")
+            print(colored(f"Downloading video: {url}", "blue"))
             ydl.download([url])
-        print(f"Saved video to: {output_path}")
+        print(colored(f"Saved video to: {output_path}", "green"))
         saved_paths.append(output_path)
     return saved_paths
 
 
 # Define a function to speak text using edge-tts
-def text_to_speech(text, output_path_location="output.mp3"):
+def text_to_speech(text: str, output_path_location: str = "output.mp3") -> str:
+    """
+    Converts the given text to speech and saves it as an audio file.
 
+    Args:
+        text (str): The text to be converted into speech.
+        output_path_location (str, optional): The file path where the generated
+            audio file will be saved. Defaults to "output.mp3".
+
+    Returns:
+        str: The file path where the audio file is saved.
+    """
     # Choose the voice for the speech (professional Canadian accent)
     voice = "en-CA-LiamNeural"
-
-    # Choose the voice you want for the speech
-    # Here are some Available options with nice Indian accent & are good for
-    # conversation:
-    # - en-US-JennyNeural: A clear and professional-sounding American female
-    #   voice
-    # - en-SG-LunaNeural: A friendly and approachable Singaporean female voice
-    # - en-AU-NatashaNeural: A warm and friendly Australian female voice
-    # - en-CA-ClaraNeural: A crisp and articulate Canadian female voice
 
     # Build the edge-tts command string, including voice, text,
     # and output media
     command = (
-        f"edge-tts --voice \"{voice}\" "
-        f"--text \"{text}\" "
-        f"--write-media \"{output_path_location}\""
+        f'edge-tts --voice "{voice}" '
+        f'--text "{text}" '
+        f'--write-media "{output_path_location}"'
     )
-    # print(command)
 
     # Execute the edge-tts command using the system shell
     os.system(command)
@@ -158,9 +172,7 @@ def text_to_speech(text, output_path_location="output.mp3"):
 
 
 def generate_subtitles(
-    audio_path: str,
-    ASSEMBLY_AI_API_KEY: str,
-    directory: str = "./subtitles"
+    audio_path: str, assembly_ai_api_key: str, directory: str = "./subtitles"
 ) -> str:
     """
     Generates subtitles from a given audio file and
@@ -173,13 +185,14 @@ def generate_subtitles(
     Returns:
         str: The path to the generated subtitles.
     """
+
     def equalize_subtitles(srt_path: str, max_chars: int = 10) -> None:
         # Equalize subtitles
         srt_equalizer.equalize_srt_file(srt_path, srt_path, max_chars)
 
-    print(ASSEMBLY_AI_API_KEY)
+    print(assembly_ai_api_key)
 
-    aai.settings.api_key = ASSEMBLY_AI_API_KEY
+    aai.settings.api_key = assembly_ai_api_key
 
     transcriber = aai.Transcriber()
 
@@ -191,8 +204,8 @@ def generate_subtitles(
 
     subtitles = transcript.export_subtitles_srt()
 
-    with open(subtitles_path, "w", encoding="utf-8") as f:
-        f.write(subtitles)
+    with open(subtitles_path, "w", encoding="utf-8") as subtitle_file:
+        subtitle_file.write(subtitles)
 
     # Equalize subtitles
     equalize_subtitles(subtitles_path)
@@ -221,7 +234,7 @@ def combine_videos(video_paths: List[str], max_duration: int) -> str:
         colored(
             f"[+] Each video will be "
             f"{max_duration / len(video_paths)} seconds long.",
-            "blue"
+            "blue",
         )
     )
 
@@ -234,9 +247,9 @@ def combine_videos(video_paths: List[str], max_duration: int) -> str:
 
         # Not all videos are same size,
         # so we need to resize them
-        clip = crop(clip, width=1080, height=1920,
-                    x_center=clip.w / 2,
-                    y_center=clip.h / 2)
+        clip = crop(
+            clip, width=1080, height=1920, x_center=clip.w / 2, y_center=clip.h / 2
+        )
         clip = clip.resize((1080, 1920))
 
         clips.append(clip)
@@ -252,7 +265,7 @@ def generate_video(
     combined_video_path: str,
     tts_path: str,
     subtitles_path: str,
-    output_file_name: str = "main_output.mp4"
+    output_file_name: str = "main_output.mp4",
 ) -> str:
     """
     This function creates the final video, with subtitles and audio.
@@ -265,6 +278,7 @@ def generate_video(
     Returns:
         str: The path to the final video.
     """
+
     # Make a generator that returns a TextClip when called with consecutive
     def generator(txt):
         return TextClip(
@@ -272,14 +286,18 @@ def generate_video(
             font=r"MoneyPrinter\fonts\bold_font.ttf",
             fontsize=100,
             color="#FFFF00",
-            stroke_color="black", stroke_width=5)
+            stroke_color="black",
+            stroke_width=5,
+        )
 
     # Burn the subtitles into the video
     subtitles = SubtitlesClip(subtitles_path, generator)
-    result = CompositeVideoClip([
-        VideoFileClip(combined_video_path),
-        subtitles.set_position(("center", "center"))
-    ])
+    result = CompositeVideoClip(
+        [
+            VideoFileClip(combined_video_path),
+            subtitles.set_position(("center", "center")),
+        ]
+    )
 
     # Add the audio
     audio = AudioFileClip(tts_path)
@@ -291,14 +309,27 @@ def generate_video(
 
 
 def list_files_in_directory(directory):
+    """
+    List all files in the specified directory.
+    Args:
+        directory (str): The path to the directory to list files from.
+    Returns:
+        list: A list of filenames in the specified directory. If the directory
+        is not found, an empty list is returned.
+    Raises:
+        FileNotFoundError: If the specified directory does not exist.
+    """
     try:
         # Get a list of all files in the specified directory
-        files = [f for f in os.listdir(directory) if os.path.isfile(
-            os.path.join(directory, f))]
+        files = [
+            file_name
+            for file_name in os.listdir(directory)
+            if os.path.isfile(os.path.join(directory, file_name))
+        ]
         return files
 
     except FileNotFoundError:
-        print(f"Directory not found: {directory}")
+        print("Directory not found: " + str(directory))
         return []
 
 
@@ -319,7 +350,8 @@ if __name__ == "__main__":
     # print(path)
     if TWITCH_CLIENT_ID and TWITCH_ACCESS_TOKEN:
         video_urls = fetch_twitch_videos(
-            TWITCH_CLIENT_ID, TWITCH_ACCESS_TOKEN, TWITCH_CHANNEL_ID)
+            TWITCH_CLIENT_ID, TWITCH_ACCESS_TOKEN, TWITCH_CHANNEL_ID
+        )
     else:
         print(colored("Error: Missing Twitch credentials.", "red"))
         video_urls = []
