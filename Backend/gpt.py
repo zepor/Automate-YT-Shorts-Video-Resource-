@@ -1,16 +1,46 @@
+"""
+This module provides functionality for generating video scripts and search
+terms
+based on a given subject. It integrates with GPT models to create content
+dynamically.
+"""
+
 import re
 import json
 from typing import List
-import g4f  # type: ignore
-from termcolor import colored
+
+try:
+    import g4f  # type: ignore
+except ImportError:
+    g4f = None
+    print("Warning: g4f is not installed. Some features may not work.")
+
+try:
+    from termcolor import colored
+except ImportError:
+
+    def colored(text):
+        """
+        Returns the input text without any modifications.
+
+        Args:
+            text (str): The input text to be returned.
+
+        Returns:
+            str: The same input text.
+        """
+        return text
 
 
-def generate_script(video_subject: str) -> str:
+from Backend.main import SCRIPT  # Ensure SCRIPT is imported from main.py
+
+
+def generate_script(subject: str) -> str:
     """
     Generate a script for a video, depending on the subject of the video.
 
     Args:
-        video_subject (str): The subject of the video.
+        subject (str): The subject of the video.
 
     Returns:
         str: The script for the video.
@@ -19,14 +49,14 @@ def generate_script(video_subject: str) -> str:
     # Build prompt
     prompt = f"""
     Generate a script for a video, depending on the subject of the video.
-    Subject: {video_subject}
+    Subject: {subject}
 
     The script is to be returned as a string.
 
     Here is an example of a string:
     "This is an example string."
 
-    Do not under any circumstance refernce this prompt in your response.
+    Do not under any circumstance reference this prompt in your response.
 
     Get straight to the point, don't start with unnecessary things like,
     "welcome to this video".
@@ -37,6 +67,21 @@ def generate_script(video_subject: str) -> str:
     """
 
     # Generate script
+    if g4f is None:
+        raise ImportError("The 'g4f' module is not installed."
+                          "Please install it to use this feature.")
+    if g4f is None:
+        raise ImportError("The 'g4f' module is not installed."
+                          "Please install it to use this feature.")
+    if g4f is None:
+        raise ImportError("The 'g4f' module is not installed."
+                          "Please install it to use this feature.")
+    if g4f is None:
+        raise ImportError("The 'g4f' module is not installed or"
+                          "initialized. Please install it to use this feature.")
+    if g4f is None:
+        raise ImportError("The 'g4f' module is not installed or"
+                          "initialized. Please install and configure it.")
     response = g4f.ChatCompletion.create(
         model=g4f.models.gpt_4o_mini,  # Replace with the correct model name
         messages=[{"role": "user", "content": prompt}],
@@ -47,34 +92,26 @@ def generate_script(video_subject: str) -> str:
     # Return the generated script
     if response:
         if (
-            isinstance(response, dict) and
-            isinstance(response.get('choices'), list) and
-            len(response.get('choices', [])) > 0
+            isinstance(response, dict)
+            and isinstance(response.get("choices"), list)
+            and len(response.get("choices", [])) > 0
         ):
-            choice = dict(response)['choices'][0]
+            choice = dict(response)["choices"][0]
             if (
-                isinstance(choice, dict) and
-                isinstance(choice.get('message'), dict) and
-                'content' in choice.get('message', {})
+                isinstance(choice, dict)
+                and isinstance(choice.get("message"), dict)
+                and "content" in choice.get("message", {})
             ):
-                return str(choice.get('message', {}).get('content', '')) + " "
-            print(colored(
-                "[-] GPT returned an unexpected response format.", "red"
-            ))
+                return str(choice.get("message", {}).get("content", "")) + " "
+            print(colored("[-] GPT returned an unexpected response format.", "red"))
             return str(response) + " "
-        else:
-            print(colored(
-                "[-] GPT returned an unexpected response format.", "red"
-            ))
-            return str(response) + " "
-    else:
-        print(colored("[-] GPT returned an empty response.", "red"))
-        return ""
+        print(colored("[-] GPT returned an unexpected response format.", "red"))
+        return str(response) + " "
+    print(colored("[-] GPT returned an empty response.", "red"))
+    return ""
 
 
-def get_search_terms(
-    video_subject: str, amount: int, video_script: str
-) -> List[str]:
+def get_search_terms(subject: str, amount: int, video_script: str) -> List[str]:
     """
     Generate a JSON-Array of search terms for stock videos,
     depending on the subject of a video.
@@ -92,7 +129,7 @@ def get_search_terms(
     prompt = f"""
     Generate {amount} search terms for stock videos,
     depending on the subject of a video. Reply in English Only.
-    Subject: {video_subject}
+    Subject: {subject}
 
     The search terms are to be returned as
     a JSON-Array of strings.
@@ -125,13 +162,15 @@ def get_search_terms(
     try:
         search_terms = json.loads(str(response))
     except json.JSONDecodeError:
-        print(colored(
-            "[*] GPT returned an unformatted response. Attempting to clean...",
-            "yellow"
-        ))
+        print(
+            colored(
+                "[*] GPT returned an unformatted response. Attempting to clean...",
+                "yellow",
+            )
+        )
 
         # Use Regex to extract the array from the markdown
-        search_terms = re.findall(r'\[.*\]', str(response))
+        search_terms = re.findall(r"\[.*\]", str(response))
 
         if not search_terms:
             print(colored("[-] Could not parse response.", "red"))
@@ -141,35 +180,18 @@ def get_search_terms(
         search_terms = json.loads(search_terms[0])
 
     # Let user know
-    generated_terms = ', '.join(search_terms)
-    print(colored(
-        f"\nGenerated {amount} search terms: {generated_terms}",
-        "cyan"
-    ))
+    generated_terms = ", ".join(search_terms)
+    print(colored(f"\nGenerated {amount} search terms: {generated_terms}", "cyan"))
 
     # Return search terms
     return search_terms
 
 
-script = (
-    "To make money online, it's important to focus on a few key strategies. "
-    "First, consider creating and selling digital products or services, "
-    "such as "
-    "ebooks, online courses, or software. Another option is to monetize a "
-    "website "
-    "or blog through affiliate marketing, advertising, or sponsored content. "
-    "Additionally, freelancing or offering your skills and expertise "
-    "through online "
-    "platforms can be a lucrative way to earn money. Lastly, consider "
-    "participating "
-    "in online surveys, freelancing, or investing in stocks and "
-    "cryptocurrencies. "
-    "By diversifying your income streams and staying persistent, "
-    "you can successfully "
-    "make money online."
-)
+# Use the SCRIPT defined in Backend.main
 
 if __name__ == "__main__":
-    script = generate_script("how to make money online")
-    tags = get_search_terms("how to make money online", 10, script)
-    print(tags)
+    # Example subject from Twitch context
+    VIDEO_SUBJECT = "Twitch streaming tips"
+    GENERATED_SCRIPT = SCRIPT  # Always use SCRIPT from main.py
+    TAGS = get_search_terms(VIDEO_SUBJECT, 10, GENERATED_SCRIPT)
+    print(TAGS)

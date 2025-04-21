@@ -1,6 +1,6 @@
 {
   "Ingest VOD": {
     "status": "completed",
-    "details": "Twitch VOD download logic found in main.py and video.py."
+    "details": "Twitch VOD download logicfound in main.py and video.py."
   }
 }

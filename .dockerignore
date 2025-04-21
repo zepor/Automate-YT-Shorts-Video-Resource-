@@ -1,13 +1,9 @@
-# Ignore local development folders
 .vscode/
-.github/
 __pycache__/
 *.pyc
 *.pyo
 *.part
 *.ytmdl
-
-# Ignore local temp files (big media)
 temp/
 fonts/
 har_and_cookies/
