@@ -1,0 +1,16 @@
+FROM node:20-slim
+
+WORKDIR /app/Dashboard/frontend
+
+# Copy only package.json for faster install step
+COPY Dashboard/frontend/package.json ./
+
+# Install dependencies (Linux-native)
+RUN npm install
+
+# Copy the rest of the frontend source
+COPY Dashboard/frontend ./
+
+EXPOSE 5173
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

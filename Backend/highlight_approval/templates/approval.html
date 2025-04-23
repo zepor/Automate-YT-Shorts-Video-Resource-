@@ -1,0 +1,310 @@
+<!-- templates/approval.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Highlight Approval Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: #f8f9fa;
+      }
+      .sidebar {
+        height: 100vh;
+        background: #222;
+        color: #fff;
+        min-width: 220px;
+      }
+      .sidebar .nav-link {
+        color: #fff;
+      }
+      .sidebar .nav-link.active {
+        background: #444;
+        font-weight: bold;
+      }
+      .main-content {
+        margin-left: 220px;
+        padding: 2rem;
+      }
+      .kanban-col {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px #0001;
+        padding: 1rem;
+        min-height: 400px;
+      }
+      .video-card {
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        background: #f9f9f9;
+      }
+      .video-card .video-details {
+        display: none;
+      }
+      .video-card.expanded .video-details {
+        display: block;
+      }
+      .markdown-modal .modal-dialog {
+        max-width: 900px;
+      }
+      .markdown-modal .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="d-flex">
+      {% if message %}
+      <p style="color: blue">{{ message }}</p>
+      {% endif %} {% with messages = get_flashed_messages(with_categories=true)
+      %} {% if messages %}
+      <ul>
+        {% for category, message in messages %}
+        <li style="color: green">{{ message }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %} {% endwith %} {% if highlights %}
+      <form method="post">
+        {% for h in highlights %}
+        <div class="highlight">
+          <h3>Timestamp: {{ h.timestamp }}</h3>
+          <video class="video-preview" controls>
+            <source
+              src="{{ url_for('static', filename='sample.mp4') }}"
+              type="video/mp4"
+            />
+            Your browser does not support the video tag.
+          </video>
+          <br />
+          <label>
+            Rating (1-5):
+            <input
+              type="number"
+              name="rating_{{ h.timestamp }}"
+              min="1"
+              max="5"
+              value="{{ ratings.get(h.timestamp, {}).get('rating', '') }}"
+            />
+          </label>
+          <label>
+            <input type="checkbox" name="approve_{{ h.timestamp }}" {% if
+            ratings.get(h.timestamp, {}).get('approved', False) %}checked{%
+            endif %}> Approve
+          </label>
+        </div>
+        {% endfor %}
+        <button type="submit">Save Ratings & Approvals</button>
+      </form>
+      {% endif %} {% if reviewed %}
+      <h2>Previously Reviewed Highlights</h2>
+      <ul>
+        {% for r in reviewed %}
+        <li>
+          Timestamp: {{ r.timestamp }}, Rating: {{ r.rating }}, Approved: {{
+          r.approved }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    <div class="container mt-4">
+      <div class="row mb-3">
+        <div class="col">
+          <button id="run-eval-btn" class="btn btn-warning">
+            Re-run Evaluation
+          </button>
+          <span id="eval-status" class="ms-2"></span>
+        </div>
+      </div>
+    </div>
+    <div class="container mt-4">
+      <h2>Pipeline Steps</h2>
+      <div class="row mb-3">
+        <div class="col">
+          <button id="run-evaluation-btn" class="btn btn-warning">
+            Run Evaluation
+          </button>
+          <button id="run-detection-btn" class="btn btn-info">
+            Run Detection
+          </button>
+          <button id="run-editing-btn" class="btn btn-primary">
+            Run Editing
+          </button>
+          <button id="run-publishing-btn" class="btn btn-success">
+            Run Publishing
+          </button>
+          <span id="pipeline-status" class="ms-2"></span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <h4>Available Videos by Step</h4>
+          <div id="videos-by-step"></div>
+        </div>
+      </div>
+    </div>
+    <div class="container mt-4">
+      <h2>Pipeline Project Flow</h2>
+      <div class="row" id="pipeline-flow">
+        <div class="col" style="min-width: 350px">
+          <h4>Detection</h4>
+          <div id="detection-list"></div>
+        </div>
+        <div class="col" style="min-width: 350px">
+          <h4>Editing</h4>
+          <div id="editing-list"></div>
+        </div>
+        <div class="col" style="min-width: 350px">
+          <h4>Publishing</h4>
+          <div id="publishing-list"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const evalBtn = document.getElementById("run-eval-btn");
+        const statusSpan = document.getElementById("eval-status");
+        if (evalBtn) {
+          evalBtn.addEventListener("click", function () {
+            statusSpan.textContent = "Starting evaluation...";
+            fetch("/run_evaluation", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                statusSpan.textContent = data.message || "Evaluation started.";
+              })
+              .catch((err) => {
+                statusSpan.textContent = "Error starting evaluation.";
+              });
+          });
+        }
+      });
+
+      function fetchPipelineStatus() {
+        fetch("/pipeline_status")
+          .then((response) => response.json())
+          .then((data) => {
+            let html = "";
+            for (const [step, videos] of Object.entries(data)) {
+              html += `<b>${
+                step.charAt(0).toUpperCase() + step.slice(1)
+              }:</b> `;
+              if (videos.length > 0) {
+                html +=
+                  "<ul>" +
+                  videos.map((v) => `<li>${v}</li>`).join("") +
+                  "</ul>";
+              } else {
+                html += "<span>No videos available</span>";
+              }
+            }
+            document.getElementById("videos-by-step").innerHTML = html;
+          });
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        fetchPipelineStatus();
+        const statusSpan = document.getElementById("pipeline-status");
+        function runStep(step, btn) {
+          statusSpan.textContent = `Starting ${step}...`;
+          fetch(`/run_step/${step}`, { method: "POST" })
+            .then((response) => response.json())
+            .then((data) => {
+              statusSpan.textContent = data.message || `${step} started.`;
+              fetchPipelineStatus();
+            })
+            .catch((err) => {
+              statusSpan.textContent = `Error starting ${step}.`;
+            });
+        }
+        document.getElementById("run-evaluation-btn").onclick = () =>
+          runStep("evaluation");
+        document.getElementById("run-detection-btn").onclick = () =>
+          runStep("detection");
+        document.getElementById("run-editing-btn").onclick = () =>
+          runStep("editing");
+        document.getElementById("run-publishing-btn").onclick = () =>
+          runStep("publishing");
+      });
+
+      function createVideoCard(video, highlights, stage) {
+        let html = `<div class='video-card' style='border:1px solid #ccc; margin-bottom:10px; border-radius:6px;'>`;
+        html += `<div style='padding:8px; cursor:pointer;' onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'none' ? 'block' : 'none')">`;
+        html += `<b>${video}</b> <span style='font-size:0.9em;color:#888;'>(${stage})</span>`;
+        html += ` <span style='float:right;'>[+/-]</span>`;
+        html += `</div>`;
+        html += `<div class='video-details' style='display:none; padding:8px; background:#f9f9f9;'>`;
+        if (highlights && highlights.length > 0) {
+          html += `<table style='width:100%; font-size:0.95em;'><thead><tr><th>Timestamp</th><th>Approved</th><th>Rating</th><th>Edited</th><th>Planogram</th><th>Edited Video</th></tr></thead><tbody>`;
+          for (const h of highlights) {
+            html += `<tr>`;
+            html += `<td>${h.timestamp ?? ""}</td>`;
+            html += `<td>${h.approved ? "✅" : "❌"}</td>`;
+            html += `<td>${h.rating ?? ""}</td>`;
+            html += `<td>${
+              h.edited !== undefined ? (h.edited ? "✅" : "❌") : ""
+            }</td>`;
+            html += `<td>${h.planogram ?? ""}</td>`;
+            html += `<td>${h.edited_video ?? ""}</td>`;
+            html += `</tr>`;
+          }
+          html += `</tbody></table>`;
+        } else {
+          html += `<i>No highlights available.</i>`;
+        }
+        html += `</div></div>`;
+        return html;
+      }
+
+      function createPublishingCard(video, edited_video, published) {
+        let html = `<div class='video-card' style='border:1px solid #ccc; margin-bottom:10px; border-radius:6px;'>`;
+        html += `<div style='padding:8px; cursor:pointer;' onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'none' ? 'block' : 'none')">`;
+        html += `<b>${video}</b> <span style='font-size:0.9em;color:#888;'>(publishing)</span>`;
+        html += ` <span style='float:right;'>[+/-]</span>`;
+        html += `</div>`;
+        html += `<div class='video-details' style='display:none; padding:8px; background:#f9f9f9;'>`;
+        html += `<b>Edited Video:</b> ${edited_video}<br/>`;
+        html += `<b>Published:</b> ${published ? "✅" : "❌"}`;
+        html += `</div></div>`;
+        return html;
+      }
+
+      function renderPipelineFlow(data) {
+        // Detection
+        let detHtml = "";
+        for (const v of data.detection) {
+          detHtml += createVideoCard(v.video, v.highlights, "detection");
+        }
+        document.getElementById("detection-list").innerHTML = detHtml;
+        // Editing
+        let editHtml = "";
+        for (const v of data.editing) {
+          editHtml += createVideoCard(v.video, v.highlights, "editing");
+        }
+        document.getElementById("editing-list").innerHTML = editHtml;
+        // Publishing
+        let pubHtml = "";
+        for (const v of data.publishing) {
+          pubHtml += createPublishingCard(v.video, v.edited_video, v.published);
+        }
+        document.getElementById("publishing-list").innerHTML = pubHtml;
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        fetch("/pipeline_status")
+          .then((response) => response.json())
+          .then((data) => renderPipelineFlow(data));
+      });
+    </script>
+  </body>
+</html>

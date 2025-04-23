@@ -2,16 +2,18 @@
 Module for tracking and updating the progress of pipeline steps,
 including generating summaries and detailed documentation in project files.
 """
-
 import os
+from pathlib import Path
 import json
 from datetime import datetime
 import re
 from Backend.utils import document_step
 
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-README_PATH = os.path.join(PROJECT_DIR, "READMEBUILD.md")
-PROGRESS_PATH = os.path.join(PROJECT_DIR, "progress.json")
+# Paths for writing progress and documentation in the Dashboard folder
+PROJECT_ROOT = Path(__file__).parent.parent
+DASHBOARD_DIR = PROJECT_ROOT / 'Dashboard'
+README_PATH = DASHBOARD_DIR / 'READMEBUILD.md'
+PROGRESS_PATH = DASHBOARD_DIR / 'progress.json'
 
 
 def update_step(

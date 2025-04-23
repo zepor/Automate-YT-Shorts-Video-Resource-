@@ -1,6 +1,23 @@
 {
-  "Ingest VOD": {
+  "Highlight Detection": {
     "status": "completed",
-    "details": "Twitch VOD download logicfound in main.py and video.py."
-  }
+    "details": "Highlight detection logic found."
+  },
+  "Migration Log": [
+    {
+      "date": "2025-04-22",
+      "step": "Migrate dashboard to TypeScript/Node.js with Express server and hybrid API proxy architecture.",
+      "status": "completed"
+    },
+    {
+      "date": "2025-04-22",
+      "step": "Move all Dashboard Python files to Backend and expose as modular Flask blueprints for API access.",
+      "status": "completed"
+    },
+    {
+      "date": "2025-04-22",
+      "step": "Fix Docker moviepy.editor import error by pinning moviepy to 2.0.0 and force-reinstalling all dependencies in Dockerfile.backend.",
+      "status": "completed"
+    }
+  ]
 }

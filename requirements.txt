@@ -2,18 +2,21 @@ g4f
 setuptools
 wheel
 requests
-moviepy
+moviepy @ git+https://github.com/Zulko/moviepy.git@v2.0.0
 termcolor
 playsound
 srt_equalizer
 assemblyai
 Pillow==9.5.0
 vodbot
-moviepy
 streamlink
 yt-dlp
 openai-whisper
 opencv-python
 pandas
 numpy
-requests
+Flask>=2.0.0
+markdown
+
+# Add watchdog for live-reload support
+watchdog>=2.1.0

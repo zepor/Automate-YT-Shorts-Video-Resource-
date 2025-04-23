@@ -76,6 +76,17 @@ After coding:
 
 ---
 
+## Dependency and Build Management
+
+- When new pip packages are required for a step, always:
+  - List the new packages and provide the exact `pip install ...` command for local installation.
+  - Update `requirements.txt` with the new dependencies.
+  - Update the `Dockerfile` and `docker-compose.yml` as needed so containers can be rebuilt automatically.
+  - Clearly document these changes in `progress.json` and `READMEBUILD.md`.
+- Ensure generated code is free of Pylint errors and warnings (such as import errors, unused imports, logging f-string interpolation, and broad exception handling). Refactor or add comments to suppress unavoidable warnings, and prefer best practices for logging and exception handling.
+
+---
+
 ## 🎯 Final Mission
 
 Build a fully-automated, self-learning content engine that continuously ingests Twitch streams and outputs viral, platform-optimized short-form videos that **pull viewers back to Twitch**, **grow brand reach**, and **attract other streamers to use this solution**.
