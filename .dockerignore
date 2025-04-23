@@ -11,3 +11,6 @@ har_and_cookies/
 .envrc
 Dockerfile~
 *.log
+node_modules/
+Dashboard/frontend/node_modules/
+Dashboard/frontend/dist/

@@ -136,8 +136,11 @@ docker-compose down
     __init__.py
     youtube_uploader.py
     tiktok_uploader.py
+  /dashboard
+    __init__.py
+    evaluation.py
+    orchestration.py
   main.py
-  evaluation.py
   utils.py
 /fonts
   bold_font.ttf
@@ -393,4 +396,188 @@ except Exception as e:
 
 ---
 
+## Dashboard Integration & Project Flow
+
+The dashboard provides a project flow/status process view of the pipeline, with videos grouped by stage:
+
+- **Detection:** Videos awaiting highlight review. Expand to see highlights, approval status, and ratings. Videos remain here until all highlights are reviewed.
+- **Editing:** Videos with all highlights approved. Expand to see each highlight, subtitle/overlay edit status, planogram assignment, and edited video location. Batch-friendly for multiple highlights per video.
+- **Publishing:** Videos/sub-videos ready for or already published. Expand to see publishing status and output locations.
+
+### Manual Step Triggers
+
+- The dashboard includes buttons to manually trigger each pipeline step (evaluation, detection, editing, publishing). These call backend routes that run the corresponding scripts in a batch-friendly, robust way.
+
+### Batch Handling & Status Tracking
+
+- Each video is only in one stage at a time, ensuring clear process flow.
+- Status and sub-statuses (e.g., highlight approval, edit completion) are shown in expandable/collapsible cards for clarity and scalability.
+
+### Usage Instructions
+
+1. **Start the application** (Docker or local): The dashboard is available at `http://localhost:5001`.
+2. **Review videos in Detection:** Expand a video to review and approve/reject highlights.
+3. **Move to Editing:** Once all highlights are approved, the video appears in Editing. Edit subtitles/overlays and assign planograms as needed.
+4. **Publish:** When all edits are complete, videos move to Publishing. Monitor publishing status and outputs.
+5. **Manual triggers:** Use the dashboard buttons to manually run any pipeline step as needed.
+
+### Platform Compatibility & Best Practices
+
+- All scripts use only relative/config-driven paths for Windows 11 and Docker compatibility.
+- Modular, production-grade Python 3.11+ code with type hints, docstrings, and robust logging/error handling.
+- Batch-friendly logic for handling multiple VODs and highlights.
+- See AGENT_PROMPT.md for platform-specific video requirements (YouTube Shorts, TikTok, Instagram, Twitter).
+
+### Pipeline Step Links
+
+- **Ingestion:** See `main.py`, `video.py` for VOD download logic.
+- **Detection:** See `highlight_detection/highlight_detector.py` for highlight detection.
+- **Editing:** See `video_editing/editor.py` for editing logic.
+- **Publishing:** See `uploader/publish.py` for upload automation.
+- **Dashboard:** See `Backend/highlight_approval/approval_app.py` and `templates/approval.html` for dashboard logic and UI.
+
+---
+
+### Step: Highlight Detection
+
+- **Status:** pending
+- **Files Modified:** Backend/highlight_detection/**init**.py, Backend/highlight_detection/chat_analysis.py, Backend/highlight_detection/audio_analysis.py, Backend/highlight_detection/highlight_detector.py, Backend/highlight_detection/highlight_ratings.json, Backend/highlight_detection_README.md, Backend/main.py, progress.json
+- **Rationale:** Refactored highlight detection logic into a modular package as per project structure. Added robust logging, highlight rating, and approval logic. Updated documentation with detailed approach comparisons and future enhancements. Integrated detection into main.py for automated pipeline execution. Updated progress.json for traceability.
+- **Prompt Used:** Refactor and modularize the highlight detection logic into /Backend/highlight_detection/ (with chat_analysis.py, audio_analysis.py, highlight_detector.py, init.py). Implement robust logging and highlight rating logic. Update highlight_detection_README.md with all comparison details, rationale, and future enhancements. Integrate the new detection logic into main.py. Ensure all changes, rationale, and prompts are documented in READMEBUILD.md and progress.json for traceability.
+- **Timestamp:** 2025-04-20T23:20:00Z
+
 🚀 **Final Mission:** Create viral, dynamic, platform-optimized short videos that magnetically drive new traffic to your Twitch channel while building a brand presence across all major platforms.
+
+## Hybrid Dashboard UI (Sidebar + Kanban + Docs)
+
+A professional, user-friendly dashboard is now implemented with the following features:
+
+- **Sidebar Navigation:**
+  - Switch between Pipeline (project flow/status) and Docs (markdown file viewer).
+- **Kanban Columns:**
+  - Detection, Editing, and Publishing columns show videos in their current pipeline stage.
+  - Each video is a card, expandable to show highlights, edit status, planogram, and publishing info.
+  - Only one stage per video at a time; batch-friendly for multiple VODs.
+- **Documentation Viewer:**
+  - All .md files in the repo are listed and viewable in the dashboard, rendered as HTML.
+- **Responsive UI:**
+  - Uses Bootstrap 5 for a modern, professional look and mobile compatibility.
+- **Extensible:**
+  - Modular backend and frontend, easy to add new pipeline steps or documentation.
+
+### User Flow
+
+1. **Pipeline View:**
+   - Track each video as it moves through Detection, Editing, and Publishing.
+   - Expand a video card to see highlight approval, editing progress, and publishing status.
+2. **Docs View:**
+   - Browse and read project documentation directly in the dashboard.
+3. **Manual Triggers:**
+   - (Planned) Add action buttons to cards for manual step triggers (e.g., re-run detection, start editing).
+
+### Rationale
+
+- **Professional, SaaS-style UI** for clarity and ease of use.
+- **Batch-friendly** for handling multiple videos and highlights.
+- **Integrated documentation** for developer onboarding and reference.
+- **Windows 11 and Docker compatible** with only relative/config-driven paths.
+
+### Files Modified
+
+- Backend/highlight_approval/approval_app.py
+- Backend/highlight_approval/templates/approval.html
+- progress.json
+- READMEBUILD.md
+
+### Prompt Used
+
+Implement a hybrid dashboard UI with sidebar navigation (Pipeline, Docs), Kanban columns for Detection, Editing, Publishing, and integrated markdown documentation viewer. Use Bootstrap 5 for a professional, responsive interface. All code must be modular, batch-friendly, and production-grade. Backend should serve .md files as rendered HTML. Document all changes in progress.json and READMEBUILD.md.
+
+### Timestamp
+
+2024-06-10T00:00:00Z
+
+---
+
+## Dashboard Web Application Migration (April 2025)
+
+## Migration Summary
+
+- Migrated dashboard frontend to Vite + React + TypeScript in `Dashboard/frontend`.
+- Added a Node.js Express server (`Dashboard/server.js`) to serve the static frontend and proxy API requests to the backend Python API.
+- Updated Dockerfile.dashboard to build the frontend and run the Node server.
+- Compose now triggers a rebuild on `Dashboard/package.json` changes.
+
+## Local Development
+
+1. Install Node.js 20+ and npm if not already installed.
+2. In `Dashboard/frontend`:
+
+   ```sh
+   npm install
+   npm run dev
+   ```
+
+   This starts the Vite dev server for local frontend development.
+3. To run the Express server locally:
+
+   ```sh
+   cd Dashboard
+   npm install express http-proxy-middleware
+   node server.js
+   ```
+
+4. For Docker development, use:
+
+   ```sh
+   docker compose up --build
+   ```
+
+## Required npm Packages
+
+- express
+- http-proxy-middleware
+- (plus all Vite/React/TypeScript dependencies in `Dashboard/frontend/package.json`)
+
+## API Proxy
+
+- The Express server proxies `/api` requests to the backend Python API (default: `http://twitch-shorts:8000`).
+- Adjust `BACKEND_API_URL` env var if needed.
+
+## Future Actions
+
+- Continue to migrate or proxy additional endpoints as needed.
+- See `progress.json` for pipeline step tracking.
+
+## Dashboard Python File Migration (April 2025)
+
+## Summary
+
+- All Python files previously in Dashboard/ have been moved to Backend/dashboard/.
+- Modular Flask blueprints now expose evaluation and orchestration logic as API endpoints:
+  - POST /api/evaluation
+  - POST /api/orchestration
+- The Dashboard folder now contains only frontend code and the Node server.
+
+## API Usage
+
+- The Node/TypeScript dashboard can call these endpoints to trigger evaluation and orchestration logic.
+
+## Justification
+
+- This migration ensures a clean separation of concerns and a production-grade, maintainable architecture.
+
+## Next Steps
+
+- Continue to add new blueprints/routes for additional backend logic as needed.
+- See progress.json for tracking.
+
+## 2025-04-22: Dockerfile.backend Fix for moviepy.editor Import Error
+
+- Pinned moviepy to version 2.0.0 and force-reinstalled all dependencies in Dockerfile.backend.
+- Added a build-time import test for 'import moviepy.editor as mp' to ensure the editor submodule is present and importable in the container.
+- This resolves the Docker build import error and ensures robust, production-grade builds for ingestion, detection, and editing pipeline steps.
+
+**Prompt Used:**
+
+Pin moviepy to 2.0.0 and force-reinstall all dependencies in Dockerfile.backend to resolve the Docker build import error for moviepy.editor as mp. Document this change in progress.json and READMEBUILD.md.
