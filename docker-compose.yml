@@ -16,6 +16,7 @@ services:
       - ASSEMBLY_AI_API_KEY=${ASSEMBLY_AI_API_KEY}
       - PEXELS_API_KEY=${PEXELS_API_KEY}
       - IMAGEMAGICK_BINARY=${IMAGEMAGICK_BINARY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - HIGHLIGHT_LOG_DIR=/app/temp
     restart: on-failure:2
     develop:
@@ -28,6 +29,8 @@ services:
             - "__pycache__/"
         - action: rebuild
           path: ./requirements.txt
+    env_file:
+      - .env
 
   dashboard:
     build:

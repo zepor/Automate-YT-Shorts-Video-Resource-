@@ -20,3 +20,5 @@ markdown
 
 # Add watchdog for live-reload support
 watchdog>=2.1.0
+pysrt
+openai>=1.0.0
