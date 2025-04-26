@@ -1,20 +1,39 @@
-from flask import Blueprint, jsonify, request
+"""
+__summary__: Evaluation API for the codebase.
+__author__: Your Name
+"""
 import logging
+
+from flask import Blueprint, jsonify
+
 from Backend.dashboard.evaluation_logic import evaluate_codebase
 
-bp_evaluation = Blueprint('evaluation', __name__, url_prefix='/api/evaluation')
+bp_evaluation = Blueprint("bp_evaluation", __name__)
 
-@bp_evaluation.route('/', methods=['POST'])
+@bp_evaluation.route("/evaluation/", methods=["POST"])
 def run_evaluation():
     """
-    Run the codebase evaluation and return the results as JSON.
+    API endpoint to run codebase evaluation and return prompt recommendation.
+    Always returns a valid JSON response with prompt_recommendation and errors.
     """
     try:
-        missing_steps = evaluate_codebase()
+        result = evaluate_codebase()
+        # Always return a valid JSON with prompt_recommendation
+        if not result.get("prompt_recommendation"):
+            result["prompt_recommendation"] = (
+                "No prompt recommendation available. Please check logs for errors."
+            )
+        return jsonify(result), 200
+    except (ImportError, ValueError) as e:
+        logging.error("Known exception during evaluation: %s", str(e), exc_info=True)
         return jsonify({
-            'status': 'success',
-            'missing_steps': missing_steps
-        }), 200
-    except Exception as e:
-        logging.error(f"Evaluation failed: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+            "prompt_recommendation": f"Error: {str(e)}",
+            "errors": [str(e)]
+        }), 500
+    except Exception as e:  # pylint: disable=broad-except
+        # Catch-all for unexpected exceptions; suppressed pylint warning as this is an API boundary
+        logging.error("Unhandled exception during evaluation: %s", str(e), exc_info=True)
+        return jsonify({
+            "prompt_recommendation": f"Error: {str(e)}",
+            "errors": [str(e)]
+        }), 500

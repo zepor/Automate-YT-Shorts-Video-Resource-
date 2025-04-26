@@ -6,31 +6,44 @@ import os
 import json
 from datetime import datetime
 import re
+import logging
+from typing import Dict, List, Optional
+
+# Config-driven, always-writable temp directory for progress and log state
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMP_DIR = os.path.join(PROJECT_ROOT, 'temp')
+PROGRESS_PATH = os.path.join(TEMP_DIR, 'progress.json')
+LOG_STATE_PATH = os.path.join(TEMP_DIR, 'evaluation_log_state.json')
+README_PATH = os.path.join(PROJECT_ROOT, 'READMEBUILD.md')
 
 
 def document_step(
-    step_name,
-    files_modified,
-    rationale,
-    prompt,
-    status,
-    code_comments=None,
-    user_prompt=None,
-):
+    step_name: str,
+    files_modified: List[str],
+    rationale: str,
+    prompt: str,
+    status: str,
+    code_comments: Optional[Dict[str, str]] = None,
+    user_prompt: Optional[str] = None,
+) -> None:
     """
     Appends a detailed, foldable entry for a pipeline step to READMEBUILD.md
     and updates progress.json. Optionally adds code comments to the top of
     each modified file.
+    Uses config-driven, always-writable paths for Windows and Docker compatibility.
     """
-    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    readme_path = os.path.join(project_dir, "READMEBUILD.md")
-    progress_path = os.path.join(project_dir, "progress.json")
+    # Ensure temp dir exists
+    os.makedirs(TEMP_DIR, exist_ok=True)
 
-    # Update progress.json
-    if os.path.exists(progress_path):
-        with open(progress_path, "r", encoding="utf-8") as progress_file:
-            progress = json.load(progress_file)
-    else:
+    # Update progress.json in temp dir
+    try:
+        if os.path.exists(PROGRESS_PATH):
+            with open(PROGRESS_PATH, "r", encoding="utf-8") as progress_file:
+                progress = json.load(progress_file)
+        else:
+            progress = {}
+    except (OSError, json.JSONDecodeError) as e:
+        logging.warning("Could not read progress.json: %s", e)
         progress = {}
 
     progress[step_name] = {
@@ -41,54 +54,40 @@ def document_step(
         "prompt": prompt,
         "user_prompt": user_prompt,
     }
-    with open(progress_path, "w", encoding="utf-8") as progress_file:
-        json.dump(progress, progress_file, indent=2)
+    try:
+        with open(PROGRESS_PATH, "w", encoding="utf-8") as progress_file:
+            json.dump(progress, progress_file, indent=2)
+    except OSError as e:
+        logging.error("Could not write progress.json: %s", e)
 
     # Add foldable details to READMEBUILD.md
-    if os.path.exists(readme_path):
-        with open(readme_path, "r", encoding="utf-8") as readme_file:
+    if os.path.exists(README_PATH):
+        with open(README_PATH, "r", encoding="utf-8") as readme_file:
             readme = readme_file.read()
     else:
         readme = ""
 
     details_pattern = re.compile(
-        rf"<!--STEP_{step_name}_START-->.*" rf"<!--STEP_{step_name}_END-->", re.DOTALL
+        rf"<!--STEP_{step_name}_START-->.*<!--STEP_{step_name}_END-->", re.DOTALL
     )
     readme = details_pattern.sub("", readme)
     details = (
-        "\n<!--STEP_"
-        + str(step_name)
-        + "_START-->\n"
-        + "<details>\n<summary><b>"
-        + str(step_name)
-        + " ("
-        + str(status)
-        + ")</b></summary>\n\n"
-        + "- **Status:** "
-        + str(status)
-        + "\n"
-        + "- **Files Modified:** "
-        + ", ".join(files_modified)
-        + "\n"
-        + "- **Rationale:** "
-        + str(rationale)
-        + "\n"
-        + "- **Prompt Used:** `"
-        + str(prompt)
-        + "`\n"
-        + "- **User Prompt:** `"
-        + str(user_prompt or "")
-        + "`\n"
-        + "- **Timestamp:** "
-        + str(progress[step_name]["timestamp"])
-        + "\n"
-        + "</details>\n<!--STEP_"
-        + str(step_name)
-        + "_END-->\n"
+        f"\n<!--STEP_{step_name}_START-->\n"
+        f"<details>\n<summary><b>{step_name} ({status})</b></summary>\n\n"
+        f"- **Status:** {status}\n"
+        f"- **Files Modified:** {', '.join(files_modified)}\n"
+        f"- **Rationale:** {rationale}\n"
+        f"- **Prompt Used:** `{prompt}`\n"
+        f"- **User Prompt:** `{user_prompt or ''}`\n"
+        f"- **Timestamp:** {progress[step_name]['timestamp']}\n"
+        f"</details>\n<!--STEP_{step_name}_END-->\n"
     )
     readme = details + readme
-    with open(readme_path, "w", encoding="utf-8") as readme_file:
-        readme_file.write(readme)
+    try:
+        with open(README_PATH, "w", encoding="utf-8") as readme_file:
+            readme_file.write(readme)
+    except OSError as e:
+        logging.error("Could not write to READMEBUILD.md: %s", e)
 
     # Optionally add code comments to each file
     if code_comments:
@@ -100,4 +99,4 @@ def document_step(
                     with open(file_path, "w", encoding="utf-8") as file:
                         file.write(comment + "\n" + content)
             except (FileNotFoundError, PermissionError, IOError) as e:
-                print(f"Could not add comment to {file_path}: {e}")
+                logging.warning("Could not add comment to %s: %s", file_path, e)

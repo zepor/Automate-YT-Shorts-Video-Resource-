@@ -10,17 +10,16 @@ import os
 from typing import List
 
 import assemblyai as aai  # type: ignore
-
 # Ensure the requests library is installed and properly imported
 import requests
 import srt_equalizer  # type: ignore
-from moviepy.video.io.VideoFileClip import VideoFileClip
-from moviepy.audio.io.AudioFileClip import AudioFileClip
-from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
-from moviepy.video.VideoClip import TextClip
-# SubtitlesClip is not available in latest MoviePy; subtitle overlay will need a custom implementation or alternative library.
-from termcolor import colored
 import yt_dlp  # type: ignore
+from moviepy import *
+from pysrt import open as open_srt
+# Removed unused import: moviepy.video.fx.all as mp
+# SubtitlesClip is not available in latest MoviePy;
+# subtitle overlay will need a custom implementation or alternative library.
+from termcolor import colored
 
 TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
 TWITCH_ACCESS_TOKEN = os.getenv("TWITCH_ACCESS_TOKEN")
@@ -260,7 +259,7 @@ def combine_videos(video_paths: List[str], max_duration: int) -> str:
 
         # Not all videos are same size,
         # so we need to resize them
-        clip = mp.crop(
+        clip = crop(
             clip, width=1080, height=1920, x_center=clip.w / 2, y_center=clip.h / 2
         )
         clip = clip.resize((1080, 1920))
@@ -304,7 +303,22 @@ def generate_video(
         )
 
     # Burn the subtitles into the video
-    subtitles = mp.SubtitlesClip(subtitles_path, generator)
+
+
+    # Parse the subtitles file
+    subtitles = open_srt(subtitles_path)
+
+    # Create a list of TextClip objects for each subtitle
+    subtitle_clips = []
+    for subtitle in subtitles:
+        start_time = subtitle.start.ordinal / 1000  # Convert to seconds
+        end_time = subtitle.end.ordinal / 1000  # Convert to seconds
+        text_clip = generator(subtitle.text).set_start(
+            start_time).set_duration(end_time - start_time)
+        subtitle_clips.append(text_clip)
+
+    # Combine all subtitle clips into a CompositeVideoClip
+    subtitles = CompositeVideoClip(subtitle_clips)
     result = CompositeVideoClip(
         [
             VideoFileClip(combined_video_path),

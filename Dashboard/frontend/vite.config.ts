@@ -8,6 +8,10 @@ export default defineConfig({
       '/api': {
         target: 'http://twitch-shorts:8000',
         changeOrigin: true,
+      },
+      '/temp': {
+        target: 'http://twitch-shorts:8000',
+        changeOrigin: true,
       }
     }
   }
