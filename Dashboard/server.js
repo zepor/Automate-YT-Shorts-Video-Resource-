@@ -45,8 +45,8 @@ app.get('/api/markdown_file/:filename', (req, res) => {
   const repoRoot = path.join(__dirname, '..');
   const { filename } = req.params;
   if (!filename.endsWith('.md')) return res.status(400).json({ error: 'Invalid file type' });
-  const filePath = path.join(repoRoot, filename);
-  if (!filePath.startsWith(repoRoot)) return res.status(400).json({ error: 'Invalid path' });
+  const filePath = path.resolve(repoRoot, filename);
+  if (!filePath.startsWith(path.resolve(repoRoot))) return res.status(400).json({ error: 'Invalid path' });
   fs.readFile(filePath, 'utf-8', (err, data) => {
     if (err) return res.status(404).json({ error: 'File not found' });
     res.type('text/markdown').send(data);
